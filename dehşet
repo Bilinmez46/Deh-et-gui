@@ -1,0 +1,121 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+local gui = Instance.new("ScreenGui", PlayerGui)
+gui.Name = "TakipGUI"
+gui.ResetOnSpawn = false
+
+-- Ana Frame
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 300, 0, 400)
+frame.Position = UDim2.new(0.6, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0, 14)
+
+-- Scroll Frame
+local scroll = Instance.new("ScrollingFrame", frame)
+scroll.Size = UDim2.new(1, -10, 1, -90)
+scroll.Position = UDim2.new(0, 5, 0, 40)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+scroll.ScrollBarThickness = 6
+scroll.BackgroundTransparency = 1
+
+local layout = Instance.new("UIListLayout", scroll)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+	scroll.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
+end)
+
+-- Başlık
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 40)
+title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+title.Text = "Oyuncular"
+title.TextColor3 = Color3.new(1, 1, 1)
+title.TextScaled = true
+Instance.new("UICorner", title).CornerRadius = UDim.new(0, 14)
+
+-- Takip değişkenleri
+local takipEdilen = nil
+local takipHizi = 0.05 -- Hareketin hızı
+local hareketYonu = 1 -- 1 ileri, -1 geri
+local hareketMiktari = 0
+local hareketMax = 3 -- hareket mesafesi
+
+-- Takip işlemi: Sadece sizin karakteriniz hareket edecek
+RunService.RenderStepped:Connect(function()
+	if takipEdilen and takipEdilen.Character and takipEdilen.Character:FindFirstChild("HumanoidRootPart") then
+		local char = LocalPlayer.Character
+		if char and char:FindFirstChild("HumanoidRootPart") then
+			local hedefHRP = takipEdilen.Character.HumanoidRootPart
+			local myHRP = char.HumanoidRootPart
+
+			-- Sabit arka pozisyon (3 birim geride)
+			local basePosition = hedefHRP.Position - hedefHRP.CFrame.LookVector * 3
+
+			-- İleri geri hareketi güncelle
+			hareketMiktari = hareketMiktari + hareketYonu * takipHizi
+			if hareketMiktari > hareketMax then
+				hareketYonu = -1
+				hareketMiktari = hareketMax
+			elseif hareketMiktari < 0 then
+				hareketYonu = 1
+				hareketMiktari = 0
+			end
+
+			-- Son pozisyon (ileri geri hareketle)
+			local hedefPozisyon = basePosition + hedefHRP.CFrame.LookVector * hareketMiktari
+
+			-- Karakteri bu pozisyona koy, bakışı hedefe doğru ayarla
+			myHRP.CFrame = CFrame.new(hedefPozisyon, hedefHRP.Position)
+		end
+	end
+end)
+
+-- Oyuncu listesi butonları
+for _, player in pairs(Players:GetPlayers()) do
+	if player ~= LocalPlayer then
+		local btn = Instance.new("TextButton", scroll)
+		btn.Size = UDim2.new(1, -10, 0, 40)
+		btn.Text = player.Name
+		btn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+		btn.TextColor3 = Color3.new(1, 1, 1)
+		btn.TextScaled = false
+		btn.TextSize = 14
+		Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+
+		btn.MouseButton1Click:Connect(function()
+			takipEdilen = player
+			hareketMiktari = 0
+			hareketYonu = 1
+		end)
+	end
+end
+
+-- ↑ Hızlandırma Butonu
+local hizArtir = Instance.new("TextButton", frame)
+hizArtir.Size = UDim2.new(0.45, 0, 0, 30)
+hizArtir.Position = UDim2.new(0.025, 0, 1, -40)
+hizArtir.Text = "↑ Hızlandır"
+hizArtir.BackgroundColor3 = Color3.fromRGB(80, 150, 80)
+Instance.new("UICorner", hizArtir).CornerRadius = UDim.new(0, 10)
+
+hizArtir.MouseButton1Click:Connect(function()
+	takipHizi = takipHizi + 0.01
+end)
+
+-- ↓ Yavaşlatma Butonu
+local hizAzalt = Instance.new("TextButton", frame)
+hizAzalt.Size = UDim2.new(0.45, 0, 0, 30)
+hizAzalt.Position = UDim2.new(0.525, 0, 1, -40)
+hizAzalt.Text = "↓ Yavaşlat"
+hizAzalt.BackgroundColor3 = Color3.fromRGB(150, 80, 80)
+Instance.new("UICorner", hizAzalt).CornerRadius = UDim.new(0, 10)
+
+hizAzalt.MouseButton1Click:Connect(function()
+	takipHizi = math.max(0.001, takipHizi - 0.01)
+end)
